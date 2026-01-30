@@ -1,108 +1,96 @@
 from models import BookCreate, BookUpdate, BookResponse, DeleteResponse
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from typing import List, Optional
 from exceptions import BookNotFoundError
-from database import Books_DB, get_new_id, reset_db_state
+from database import get_db, Book
+from sqlalchemy.orm import Session
 
 router = APIRouter(
     prefix='/books',
     tags=['Books']
     )
 
-# -------------------------- Helper Functions -------------------------- #
-
-def find_book_by_id(book_id: int):
-    """Find the book by its ID"""
-    for book in Books_DB:
-        if book['id'] == book_id:
-            return book
-    return None
-
-def find_book_index_by_id(book_id: int):
-    """Find the index of the book by ID"""
-    for index, book in enumerate(Books_DB):
-        if book['id'] == book_id:
-            return index
-    return None
-
 # -------------------------- Routes -------------------------- #
 
 # -------------------------- Get All Books -------------------------- #
 @router.get('', response_model=List[BookResponse])
-def get_all_books():
-    return Books_DB
+def get_all_books(db: Session = Depends(get_db)):
+    return db.query(Book).all()
 
 # -------------------------- Search Books -------------------------- #
 @router.get('/search/', response_model=List[BookResponse])
-def search_book(author: Optional[str] = None, year: Optional[int] = None):
-    result = Books_DB.copy()
+def search_book(author: Optional[str] = None, year: Optional[int] = None, db: Session = Depends(get_db)):
+    query = db.query(Book)
     if author:
-        result = [book for book in result if author.lower() in book['author'].lower()]
+        # ILIKE is for case-insensitive search in PostgreSQL
+        query = query.filter(Book.author.ilike(f"%{author}%"))
     if year:
-        result = [book for book in result if year == book['year']]
-    return result
+        query = query.filter(Book.year == year)
+    return query.all()
 
 # -------------------------- Get Single Book -------------------------- #
 @router.get('/{book_id}', response_model=BookResponse)
-def get_book(book_id: int):
-    book = find_book_by_id(book_id)
+def get_book(book_id: int, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise BookNotFoundError(book_id)
     return book
 
 # -------------------------- Create Book -------------------------- #
 @router.post('', status_code=201, response_model=BookResponse)
-def create_book(book_create: BookCreate):
-    new_id = get_new_id()
-    new_book = {
-        'id': new_id,
-        **book_create.model_dump()
-        }
-    Books_DB.append(new_book)
+def create_book(book_create: BookCreate, db: Session = Depends(get_db)):
+    new_book = Book(**book_create.model_dump())
+    db.add(new_book)
+    db.commit()
+    db.refresh(new_book)
     return new_book
 
 # -------------------------- Update Book -------------------------- #
 @router.put('/{book_id}', response_model=BookResponse)
-def update_book(book_id: int, book: BookCreate):
-    index = find_book_index_by_id(book_id)
-    if index is None:
+def update_book(book_id: int, book_update: BookCreate, db: Session = Depends(get_db)):
+    book_query = db.query(Book).filter(Book.id == book_id)
+    book = book_query.first()
+    if not book:
         raise BookNotFoundError(book_id)
-    updated_book = {
-        'id': book_id,
-        **book.model_dump()
-        }
-    Books_DB[index] = updated_book
-    return updated_book
+
+    book_query.update(book_update.model_dump())
+    db.commit()
+    return book_query.first()
 
 # -------------------------- Partial Update -------------------------- #
 @router.patch('/{book_id}', response_model=BookResponse)
-def partial_book_update(book_id: int, book_update: BookUpdate):
-    book = find_book_by_id(book_id)
+def partial_book_update(book_id: int, book_update: BookUpdate, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise BookNotFoundError(book_id)
+
     updated_data = book_update.model_dump(exclude_unset=True)
     for key, val in updated_data.items():
-        book[key] = val
+        setattr(book, key, val)
+
+    db.commit()
+    db.refresh(book)
     return book
 
 # -------------------------- Delete Book -------------------------- #
 @router.delete('/{book_id}', response_model=DeleteResponse)
-def delete_book(book_id: int):
-    index = find_book_index_by_id(book_id)
-    if index is None:
+def delete_book(book_id: int, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
         raise BookNotFoundError(book_id)
-    deleted_book = Books_DB.pop(index)
+
+    db.delete(book)
+    db.commit()
     return {
         'message': 'Book Deleted Successfully !!',
-        'book': deleted_book
+        'book': book
         }
 
 # -------------------------- Delete All Books -------------------------- #
 @router.delete('', response_model=DeleteResponse)
-def delete_all_books():
-    count = len(Books_DB)
-    Books_DB.clear()
-    reset_db_state()
+def delete_all_books(db: Session = Depends(get_db)):
+    count = db.query(Book).delete()
+    db.commit()
     return {
         'message': f'{count} Books Deleted Successfully !!',
         'book': None

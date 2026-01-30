@@ -1,23 +1,32 @@
-from threading import Lock
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import sessionmaker, declarative_base
+import urllib.parse
 
-Books_DB = [
-    {'id': 1, 'title': 'World War', 'author': 'Mr.ABC', 'year': 1234},
-    {'id': 2, 'title': 'Titanic', 'author': 'Mr.Titanic', 'year': 1999},
-    {'id': 3, 'title': 'Comedy King', 'author': 'Mr.Newbie', 'year': 1800}
-    ]
+# URL encode the password to handle special characters like '@'
+password = urllib.parse.quote_plus("ayush@postgre123")
+DATABASE_URL = f'postgresql://postgres:{password}@localhost:5432/bookstore'
 
-_next_id = 4
-_id_lock = Lock()
+engine = create_engine(DATABASE_URL)
 
-def get_new_id() -> int:
-    """Thread-safe method to get and increment the ID"""
-    global _next_id
-    with _id_lock:
-        new_id = _next_id
-        _next_id += 1
-    return new_id
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def reset_db_state():
-    global _next_id
-    with _id_lock:
-        _next_id = 1
+Base = declarative_base()
+
+# -------------------------- Database Models -------------------------- #
+
+class Book(Base):
+    __tablename__ = 'books'
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    author = Column(String)
+    year = Column(Integer)
+
+# -------------------------- Dependency -------------------------- #
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

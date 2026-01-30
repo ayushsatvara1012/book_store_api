@@ -16,6 +16,10 @@ class BookResponse(BaseModel):
     title: str
     author: str
     year: int
+    
+    model_config = {
+        "from_attributes": True
+    }
 
 class DeleteResponse(BaseModel):
     message: str
