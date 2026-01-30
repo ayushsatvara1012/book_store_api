@@ -1,0 +1,66 @@
+PROJECT STRUCTURE & DATA FLOW EXPLANATION
+=========================================
+
+This document explains how your FastAPI project is structured and how the files interact with each other.
+
+1. THE BIG PICTURE
+------------------
+Instead of putting all code in one file, we split it up to make it organized.
+- main.py: The "Front Door" of your application.
+- routers/: The "Departments" (logic for specific features).
+- models.py: The "Blueprints" (data validation).
+- database.py: The "Filing Cabinet" (storage).
+- exceptions.py: The "Complaint Department" (error handling).
+
+2. FILE-BY-FILE BREAKDOWN
+-------------------------
+
+A. main.py (The Entry Point)
+   - ROLE: This is the file you run (using uvicorn). It starts the server.
+   - WHO IT TALKS TO: It imports `routers.books`.
+   - WHAT IT DOES:
+     - Creates the `app`.
+     - Sets up CORS (security rules).
+     - Tells the app: "If a request comes in starting with /books, send it to the books router."
+
+B. routers/books.py (The Logic / Controller)
+   - ROLE: Handles the actual work for book-related URLs (GET, POST, PUT, DELETE).
+   - WHO IT TALKS TO:
+     - Imports `models` to know what valid data looks like.
+     - Imports `database` to save/retrieve data.
+     - Imports `exceptions` to raise errors.
+   - WHAT IT DOES:
+     - Receives the request passed down from `main.py`.
+     - Validates data, talks to the database, and returns the response.
+
+C. models.py (The Schemas)
+   - ROLE: Defines the "shape" of your data using Pydantic.
+   - WHO IT TALKS TO: Mostly standalone. Used by `routers/books.py`.
+   - WHAT IT DOES:
+     - Ensures a "Book" always has a title, author, and year (`BookCreate`).
+     - Defines what the API sends back to the user (`BookResponse`).
+
+D. database.py (The Storage)
+   - ROLE: Holds the actual data (the list `Books_DB`) and handles ID generation.
+   - WHO IT TALKS TO: Standalone. Used by `routers/books.py`.
+   - WHAT IT DOES:
+     - Stores the list of dictionaries.
+     - Ensures thread safety when creating new IDs.
+
+E. exceptions.py (Error Handling)
+   - ROLE: Defines custom error messages.
+   - WHO IT TALKS TO: Standalone. Used by `routers/books.py`.
+   - WHAT IT DOES:
+     - Defines `BookNotFoundError` so you don't have to rewrite the "404 Not Found" message every time.
+
+3. EXAMPLE FLOW: CREATING A BOOK
+--------------------------------
+Here is the journey of a request when a user sends data to create a book:
+
+1. [User] sends a POST request to `http://localhost:8000/books`.
+2. [main.py] receives it. It sees `/books`, so it forwards the request to `routers/books.py`.
+3. [routers/books.py] receives it at the `create_book` function.
+   - It uses `models.BookCreate` to check if the user sent valid data.
+4. [routers/books.py] calls `database.get_new_id()` to get a unique ID.
+5. [routers/books.py] appends the new book to `database.Books_DB`.
+6. [routers/books.py] returns the new book data using `models.BookResponse`.
