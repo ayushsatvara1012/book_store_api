@@ -1,35 +1,48 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+
 
 # Base properties shared across all schemas
 class BookBase(BaseModel):
-    title: str
     # Making these Optional allows the API to handle the null values in your CSV
-    author: str | None = "Unknown Author"
-    year: int | None = 0
-    isbn: str | None = None
-    publisher: str | None = None
-    image_url: str | None = None
+    author: Optional[str] = "Unknown Author"
+    year: Optional[int] = 0
+    publisher: Optional[str] = None
+    image_url: Optional[str] = None
+
 
 class BookCreate(BookBase):
-    pass
+    title: str
+    isbn: str
+
 
 class BookUpdate(BaseModel):
-    title: str | None = None
-    author: str | None = None
-    year: int | None = None
-    isbn: str | None = None
-    publisher: str | None = None
-    image_url: str | None = None
+    title: Optional[str] = None
+    author: Optional[str] = None
+    year: Optional[int] = None
+    isbn: Optional[str] = None
+    publisher: Optional[str] = None
+    image_url: Optional[str] = None
+
 
 class BookResponse(BookBase):
     id: int
+    title: str
+    isbn: str
 
     # This allows Pydantic to convert SQLAlchemy objects to JSON automatically
     model_config = {
         "from_attributes": True
-        }
+    }
+
+
+class BookListResponse(BaseModel):
+    total: int
+    page: int
+    limit: int
+    books: List[BookResponse]
+
 
 class DeleteResponse(BaseModel):
     message: str
-    book: BookResponse | None = None
+    book: Optional[BookResponse] = None

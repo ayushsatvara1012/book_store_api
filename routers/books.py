@@ -1,6 +1,6 @@
-from models import BookCreate, BookUpdate, BookResponse, DeleteResponse
-from fastapi import APIRouter, Depends
-from typing import List, Optional
+from models import BookCreate, BookUpdate, BookResponse, DeleteResponse, BookListResponse
+from fastapi import APIRouter, Depends, Query
+from typing import Any, List, Optional
 from exceptions import BookNotFoundError
 from database import get_db, Book
 from sqlalchemy.orm import Session
@@ -8,15 +8,23 @@ from sqlalchemy.orm import Session
 router = APIRouter(
     prefix='/books',
     tags=['Books']
-    )
+)
+
 
 # -------------------------- Routes -------------------------- #
 
 # -------------------------- Get All Books -------------------------- #
-@router.get('', response_model=List[BookResponse])
-def get_all_books(db: Session = Depends(get_db),skip: int = 0, limit: int = 20):
+@router.get('', response_model=BookListResponse)
+def get_all_books(db: Session = Depends(get_db), page: int = Query(1, ge=1), limit: int = Query(10, le=100)):
+    skip = (page - 1) * limit
+    total_count = db.query(Book).count()
     books = db.query(Book).offset(skip).limit(limit).all()
-    return books
+    return {
+        "total": total_count,
+        "page": page,
+        "limit": limit,
+        "books": books
+    }
 
 # -------------------------- Search Books -------------------------- #
 @router.get('/search/', response_model=List[BookResponse])
