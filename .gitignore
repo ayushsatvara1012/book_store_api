@@ -1,0 +1,24 @@
+node_modules
+.gemini/
+gha-creds-*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Databases
+*.sqlite3

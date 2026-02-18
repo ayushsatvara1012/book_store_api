@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 
@@ -31,9 +31,7 @@ class BookResponse(BookBase):
     isbn: str
 
     # This allows Pydantic to convert SQLAlchemy objects to JSON automatically
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BookListResponse(BaseModel):

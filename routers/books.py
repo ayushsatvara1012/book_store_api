@@ -4,27 +4,65 @@ from typing import Any, List, Optional
 from exceptions import BookNotFoundError
 from database import get_db, Book
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
+from sentence_transformers import SentenceTransformer
+from pgvector.sqlalchemy import Vector
 
 router = APIRouter(
     prefix='/books',
     tags=['Books']
 )
 
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
 
 # -------------------------- Routes -------------------------- #
 
 # -------------------------- Get All Books -------------------------- #
 @router.get('', response_model=BookListResponse)
-def get_all_books(db: Session = Depends(get_db), page: int = Query(1, ge=1), limit: int = Query(10, le=100)):
+def get_all_books(
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+    search: Optional[str] = Query(None, description="Search by title or author")
+):
     skip = (page - 1) * limit
-    total_count = db.query(Book).count()
-    books = db.query(Book).offset(skip).limit(limit).all()
+    
+    query = db.query(Book)
+    
+    if search:
+        search_filter = f"%{search}%"
+        # Using ilike for case-insensitive search
+        query = query.filter(
+            or_(
+                Book.title.ilike(search_filter),
+                Book.author.ilike(search_filter)
+            )
+        )
+    
+    total_count = query.count()
+    books = query.offset(skip).limit(limit).all()
+    
     return {
         "total": total_count,
         "page": page,
         "limit": limit,
         "books": books
     }
+#-------------------------- Semantic Search -------------------------- #
+@router.get('/search/semantic/',response_model=List[BookResponse])
+def semantic_search(
+    query:str = Query(..., description="Search query combining title and author"),
+    limit: int = Query(12,ge=1,le=50),
+    db:Session = Depends(get_db)
+):
+    """Search books based on semantic similarity using embeddings."""
+    query_vector = model.encode(query).tolist()
+
+    books=db.query(Book).order_by(
+        Book.embedding.cosine_distance(query_vector)).limit(limit).all()
+    return books
+
 
 # -------------------------- Search Books -------------------------- #
 @router.get('/search/', response_model=List[BookResponse])
