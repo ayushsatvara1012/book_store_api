@@ -1,24 +1,23 @@
-annotated-doc
-annotated-types
-anyio
-asyncpg
-click
+# Web Framework
 fastapi
-greenlet
-h11
-idna
-passlib
-psycopg2-binary
-pydantic
-pydantic_core
+uvicorn[standard]
+
+# Database & Vectors
 SQLAlchemy
+psycopg2-binary
 pgvector
-starlette
-typing-inspection
-typing_extensions
-uvicorn
-torch==2.2.2
-sentence-transformers==2.7.0
-transformers==4.39.3
-pandas
+asyncpg
+
+# AI & Machine Learning (Flexible Versions)
+torch --index-url https://download.pytorch.org/whl/cpu
+sentence-transformers>=3.0.0
+transformers
 numpy<2.0.0
+
+# Data Processing
+pandas
+
+# Utilities
+pydantic
+passlib
+python-dotenv
