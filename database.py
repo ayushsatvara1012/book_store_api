@@ -1,9 +1,12 @@
+from json import load
+
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import sessionmaker, declarative_base
 import urllib.parse
 from pgvector.sqlalchemy import Vector
 
 # URL encode the password to handle special characters like '@'
+
 password = urllib.parse.quote_plus("ayush@postgre123")
 DATABASE_URL = f'postgresql://postgres:{password}@localhost:5432/bookstore'
 

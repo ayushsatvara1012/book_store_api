@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Book, Base
 from sentence_transformers import SentenceTransformer
-import time
+import time # Ensure this path is correct
 
 # 1. Initialize the AI Model
 print("Loading AI Model (all-MiniLM-L6-v2)...")
@@ -13,7 +13,7 @@ def migrate_data():
     # Ensure tables exist
     Base.metadata.create_all(bind=engine)
     
-    csv_file = "PythonProject/books.csv" # Ensure this path is correct
+    csv_file = "/Users/ayushsatvara/CodeWorld/LuminaLib/PythonProject/books.csv" # Ensure this path is correct
     
     # 2. Load CSV with Pandas
     # Using chunksize to handle 271k rows without crashing RAM
@@ -60,9 +60,9 @@ def migrate_data():
         batch_end = time.time()
         print(f"Processed Chunk {i+1} ({chunk_size} books) in {batch_end - batch_start:.2f}s")
 
-        if i == 0: # This stops it after the very first chunk (100 books)
-            print("Test limit reached (100 books). Stopping migration.")
-            break
+        # if i == 0: # This stops it after the very first chunk (100 books)
+        #     print("Test limit reached (100 books). Stopping migration.")
+        #     break
 
     end_time = time.time()
     print(f"Migration Complete! Total time: {(end_time - start_time) / 60:.2f} minutes.")
